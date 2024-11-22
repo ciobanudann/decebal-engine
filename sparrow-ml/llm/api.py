@@ -12,7 +12,7 @@ import box
 import yaml
 import os
 from rich import print
-
+import fitz
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -121,6 +121,23 @@ async def ingest(
         answer = json.loads(answer)
 
     return {"message": answer}
+
+@app.post("/api/v1/sparrow-llm/extract", tags=["PDF Extraction"])
+async def extract(file: UploadFile = File(...)):
+    try:
+        pdf_data = await file.read()
+        pdf_document = fitz.open(stream=pdf_data, filetype="pdf")
+
+        extracted_text = ""
+        for page_num in range(pdf_document.page_count):
+            page = pdf_document.load_page(page_num)
+            extracted_text += page.get_text("text")
+
+        markdown_content = f"## Extracted PDF Content\n\n{extracted_text}"
+
+        return {"content": markdown_content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
